@@ -1,0 +1,103 @@
+{
+  "disclaimer": "All policies below are simulated for this portfolio prototype — modeled on publicly known amazon.in norms but NOT official. Every citation must carry: (simulated policy — verify at amazon.in)",
+  "policies": [
+    {
+      "policy_id": "RET-001",
+      "category": "standard_return_within_window",
+      "title": "Standard return window — general merchandise",
+      "policy_text": "Most items sold on amazon.in are returnable within 10 days of delivery if unused, in original packaging with all tags and accessories. Refund is initiated once the pickup agent collects the item and it passes a doorstep quality check. Return pickup is free for eligible items.",
+      "resolution_authority": "ai_full"
+    },
+    {
+      "policy_id": "RET-002",
+      "category": "standard_return_within_window",
+      "title": "Category-specific return windows",
+      "policy_text": "Return windows vary by category: Fashion and Shoes — 30 days; Electronics and Mobiles — 7 days (replacement only for most brands); Books and Media — 7 days; Grocery, hygiene products, and innerwear — non-returnable. The applicable window is counted from the delivery date shown in Your Orders.",
+      "resolution_authority": "ai_full"
+    },
+    {
+      "policy_id": "REF-001",
+      "category": "standard_refund_item_returned",
+      "title": "Refund timelines after return pickup",
+      "policy_text": "Once a returned item is picked up, refunds are processed within: Amazon Pay balance — 4 hours; UPI — 2 to 4 business days; credit/debit card — 5 to 7 business days; net banking — 5 to 7 business days; Cash on Delivery orders — refunded to Amazon Pay balance or bank account via link, 4 hours to 5 business days. The refund timer starts at pickup confirmation, not at delivery back to the warehouse.",
+      "resolution_authority": "ai_full"
+    },
+    {
+      "policy_id": "REF-002",
+      "category": "standard_refund_item_returned",
+      "title": "Delayed refund after confirmed pickup",
+      "policy_text": "If a refund has not appeared within the published timeline after pickup confirmation, the customer should check the card statement against the Refund Reference Number (RRN) available in Your Orders > Order Details > Refund status. If more than 3 business days beyond the published window have passed, the case qualifies for a payments team investigation.",
+      "resolution_authority": "ai_partial"
+    },
+    {
+      "policy_id": "DEL-001",
+      "category": "delivery_delay_within_estimate",
+      "title": "Delivery promise and tracking",
+      "policy_text": "Orders display an estimated delivery date at checkout. Until that date has passed, the order is considered on time even if tracking has not updated for up to 48 hours (common at inter-city hub transfers). Customers can track shipments in Your Orders; a 'Running late' banner appears automatically if the carrier flags a delay.",
+      "resolution_authority": "ai_full"
+    },
+    {
+      "policy_id": "DEL-002",
+      "category": "delivery_delay_past_estimate",
+      "title": "Order late beyond the estimated date",
+      "policy_text": "If the estimated delivery date has passed and the item has not arrived, the customer may wait 48 hours (carrier scans can lag) or request a refund/replacement immediately if the tracking shows no movement for 72+ hours. Prime members whose guaranteed delivery date was missed may be eligible for a one-month Prime extension as goodwill.",
+      "resolution_authority": "ai_partial"
+    },
+    {
+      "policy_id": "DNR-001",
+      "category": "not_delivered_marked_delivered",
+      "title": "Item marked delivered but not received",
+      "policy_text": "If tracking shows 'Delivered' but the customer did not receive the package, they should: (1) check with household members, neighbours, and building security; (2) verify the delivery address on the order; (3) wait 24 hours, as carriers occasionally scan 'delivered' before the final handoff. If still not found after 24 hours, the customer can file a Delivery Investigation Claim from Your Orders. Investigations take 24–48 hours; if the carrier cannot prove delivery to the correct address, a full refund or replacement is issued. Claims filed more than 30 days after the delivery scan require manual review.",
+      "resolution_authority": "ai_partial"
+    },
+    {
+      "policy_id": "WRG-001",
+      "category": "wrong_item_received",
+      "title": "Wrong item, size, or colour received",
+      "policy_text": "If the item received differs from the order (wrong product, size, colour, or model), the customer can request a free replacement or full refund within the item's return window by selecting 'Item is not as described' or 'Wrong item was sent'. Photos of the received item and the shipping label speed up approval. For items fulfilled by Amazon, approval is typically instant; for seller-fulfilled items, the seller has 48 hours to respond before Amazon steps in under the A-to-z Guarantee.",
+      "resolution_authority": "ai_partial"
+    },
+    {
+      "policy_id": "WRG-002",
+      "category": "wrong_item_received",
+      "title": "Wrong item in a multi-item or combo pack",
+      "policy_text": "For multi-packs or combo offers where only part of the shipment is wrong or missing, partial refunds are calculated on the individual item's listed price share. The customer should select the specific unit affected when raising the return. If the listing does not itemise prices, the case requires manual pricing review by the Returns team.",
+      "resolution_authority": "human_only"
+    },
+    {
+      "policy_id": "DMG-001",
+      "category": "damaged_item",
+      "title": "Item arrived damaged or defective",
+      "policy_text": "Items that arrive physically damaged or dead-on-arrival are eligible for free replacement (if in stock) or full refund, reported within the return window — within 7 days for electronics. Customers should keep the original packaging and upload photos of the damage when raising the request. For high-value electronics above ₹20,000, a technician visit or brand diagnostic may be scheduled before approval; this step is mandatory for televisions and large appliances.",
+      "resolution_authority": "ai_partial"
+    },
+    {
+      "policy_id": "TPS-001",
+      "category": "third_party_seller_dispute",
+      "title": "A-to-z Guarantee for seller-fulfilled orders",
+      "policy_text": "Orders shipped and sold by third-party sellers are covered by the A-to-z Guarantee. If the seller has not resolved a delivery or condition issue, the customer must first contact the seller and allow 48 hours for a response, then may file an A-to-z claim within 90 days of the estimated delivery date. Claim adjudication involves seller evidence review and cannot be auto-decided; a claims specialist responds within 1 week. Filing a chargeback with the bank while an A-to-z claim is open voids the claim.",
+      "resolution_authority": "human_only"
+    },
+    {
+      "policy_id": "ACC-001",
+      "category": "account_suspension_payment_issue",
+      "title": "Account holds and payment verification",
+      "policy_text": "Accounts may be temporarily placed on hold for unusual payment activity, mismatched billing details, or suspected unauthorised access. While on hold, open orders pause and refunds are frozen. Restoration requires identity/payment verification through the secure link sent to the registered email — support agents and AI assistants cannot lift account holds, and the account specialist team responds within 24 hours. Customers should never share passwords or OTPs; Amazon never asks for them.",
+      "resolution_authority": "human_only"
+    },
+    {
+      "policy_id": "GWL-001",
+      "category": "item_outside_return_window",
+      "title": "Returns outside the window — goodwill exceptions",
+      "policy_text": "Returns requested after the window closes are declined by default. Exceptions (one-time goodwill returns) may be granted for: window missed by 7 days or less with a documented reason (hospitalisation, travel, address issues), manufacturing defects surfacing late (may route to brand warranty instead), or long-standing accounts with low return rates. Goodwill exceptions require human approval and are never guaranteed; AI assistants may only pre-fill the request, not grant it.",
+      "resolution_authority": "human_only"
+    },
+    {
+      "policy_id": "PRM-001",
+      "category": "subscription_prime_billing_issue",
+      "title": "Prime and subscription billing disputes",
+      "policy_text": "Unrecognised Prime or subscription charges (auto-renewal, duplicate charge, charge after cancellation) can be reviewed in Accounts > Memberships & Subscriptions. Auto-renewal within 3 days and unused benefits since renewal qualifies for a full refund on cancellation. Duplicate or post-cancellation charges require a billing team investigation with the transaction reference; investigations complete within 3–5 business days. AI assistants may locate the charge and eligibility but cannot execute billing reversals.",
+      "resolution_authority": "human_only"
+    }
+  ]
+}

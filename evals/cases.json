@@ -1,0 +1,50 @@
+[
+  {
+    "id": "clear_return",
+    "issueText": "I bought these running shoes 5 days ago and they're too small. I want to return them and get my money back.",
+    "orderContext": { "orderId": "171-2233445-0011223", "product": "Nike Revolution 7 running shoes", "issueDate": "2026-06-27" },
+    "expect": { "category": "standard_return_within_window", "maxConfidenceViolation": null, "branch": "resolution" }
+  },
+  {
+    "id": "refund_delay",
+    "issueText": "I returned an electric kettle 10 days ago, the pickup guy collected it, but the refund still hasn't come to my credit card.",
+    "orderContext": { "orderId": "171-8899001-2233445", "product": "Prestige electric kettle 1.5L", "issueDate": "2026-06-22" },
+    "expect": { "category": "standard_refund_item_returned", "maxConfidenceViolation": null, "branch": "resolution" }
+  },
+  {
+    "id": "marked_delivered",
+    "issueText": "My package shows delivered yesterday at 3pm but I never got it. Nobody in my building received anything either.",
+    "orderContext": { "orderId": "403-5566778-9900112", "product": "boAt Airdopes earbuds", "issueDate": "2026-07-01" },
+    "expect": { "category": "not_delivered_marked_delivered", "maxConfidenceViolation": null, "branch": "resolution" }
+  },
+  {
+    "id": "seller_dispute",
+    "issueText": "I bought an SSD from a third-party seller on Amazon and it's clearly fake — half the advertised capacity. The seller isn't replying to my messages for a week.",
+    "orderContext": { "orderId": "408-1122334-5566778", "product": "Samsung 980 1TB SSD (sold by RetailKing)", "issueDate": "2026-06-25" },
+    "expect": { "category": "third_party_seller_dispute", "maxConfidenceViolation": "HIGH", "branch": "brief", "owner": "Seller disputes" }
+  },
+  {
+    "id": "account_hold",
+    "issueText": "My Amazon account got suspended out of nowhere and my pending order is stuck. It says payment verification needed but I paid already.",
+    "orderContext": { "orderId": "", "product": "", "issueDate": "2026-07-01" },
+    "expect": { "category": "account_suspension_payment_issue", "maxConfidenceViolation": "HIGH", "branch": "brief", "owner": "Account team" }
+  },
+  {
+    "id": "vague_input",
+    "issueText": "my order is completely messed up, this is ridiculous",
+    "orderContext": { "orderId": "", "product": "", "issueDate": "" },
+    "expect": { "category": "unclear", "maxConfidenceViolation": null, "branch": "clarify" }
+  },
+  {
+    "id": "outside_window",
+    "issueText": "I bought a mixer grinder 45 days ago and it just stopped working. The return window says closed but I barely used it. Can I still return it?",
+    "orderContext": { "orderId": "402-9988776-6554433", "product": "Philips HL7756 mixer grinder", "issueDate": "2026-05-18" },
+    "expect": { "category": "item_outside_return_window", "maxConfidenceViolation": null, "branch": "brief", "owner": "Returns team" }
+  },
+  {
+    "id": "prime_double_charge",
+    "issueText": "Amazon charged me twice for Prime this month, ₹299 on the 1st and again on the 3rd. I only have one account.",
+    "orderContext": { "orderId": "", "product": "Prime membership", "issueDate": "2026-06-03" },
+    "expect": { "category": "subscription_prime_billing_issue", "maxConfidenceViolation": null, "branch": "brief", "owner": "Account team" }
+  }
+]

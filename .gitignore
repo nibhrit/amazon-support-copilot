@@ -2,9 +2,9 @@ node_modules/
 dist/
 .env
 .env.*
-!.env.example
 .claude/
 .vercel/
 learnings/
 docs/
 .DS_Store
+!.env.example

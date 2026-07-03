@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: `issueText too long (max ${MAX_ISSUE_CHARS} chars)` })
   }
   const oc = input.orderContext || {}
-  for (const k of ['orderId', 'product', 'issueDate']) {
+  for (const k of ['orderId', 'product', 'issueDate', 'orderFacts']) {
     if (oc[k] && String(oc[k]).length > MAX_FIELD_CHARS) {
       return res.status(400).json({ error: `orderContext.${k} too long (max ${MAX_FIELD_CHARS} chars)` })
     }

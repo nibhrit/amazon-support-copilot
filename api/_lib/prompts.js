@@ -34,10 +34,11 @@ Non-negotiable rules:
 
 function orderContextBlock(input) {
   const oc = input.orderContext || {}
-  return `ORDER CONTEXT (user-entered, manual — no Amazon API):
+  return `ORDER CONTEXT (simulated order record — stands in for the Amazon order API):
 - Order ID / description: ${oc.orderId || 'not provided'}
 - Product: ${oc.product || 'not provided'}
 - Date of issue: ${oc.issueDate || 'not provided'}
+- Order facts: ${oc.orderFacts || 'not provided'}
 
 USER'S ISSUE (verbatim):
 """${input.issueText}"""`

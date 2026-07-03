@@ -18,10 +18,19 @@ Amazon's support bot is built to deflect, not resolve. It handles templated retu
 
 The core failures: misplaced confidence, no triage between "I can fix this" and "this needs a human," zero context transfer at handoff, and a deliberately buried escalation path.
 
-## How it works
+## The experience
+
+The prototype mimics Amazon's actual UI (representative, no trademark art) so the integration story is visible:
+
+1. **Your Orders** → order list, exactly where users start
+2. **Order Details** → in-window orders get self-serve **Return/Cancel** buttons (no AI — templated cases get buttons, not models)
+3. **Customer Service** → pick the affected order, the co-pilot chat opens with full order context auto-filled — simulating what Amazon's order API would provide
+4. **Co-pilot chat** → preloaded issue chips that look like Amazon's templated options, but feed natural language into the pipeline — so "none of these match" stops being a dead end
+
+## How the AI works
 
 ```
-User describes issue in plain language (+ optional order context)
+Order context auto-filled from the selected order + issue in plain language
         │
         ▼
 CLASSIFY  → 1 of 11 issue categories + HIGH/MEDIUM/LOW confidence

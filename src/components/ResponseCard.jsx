@@ -21,7 +21,7 @@ function ConfirmBar({ verdict, onConfirm, onReject }) {
   if (verdict !== null) {
     return (
       <p className="text-xs text-gray-500 mt-3">
-        {verdict ? '✓ You confirmed this matches your issue.' : '↺ You chose to re-describe — the form above kept your context.'}
+        {verdict ? '✓ You confirmed this matches your issue.' : '↺ You chose to re-describe — type the correction below; your earlier description is kept.'}
       </p>
     )
   }
@@ -63,7 +63,7 @@ export default function ResponseCard({ exchange, onConfirm, onReject, onStillNot
         </div>
         <p className="text-gray-800">{classification.clarifying_question}</p>
         <p className="text-xs text-gray-500 mt-2">
-          I'd rather ask than guess — add the missing detail above and resend. Your earlier description is kept.
+          I'd rather ask than guess — reply below with the missing detail. Your earlier description is kept.
         </p>
       </div>
     )

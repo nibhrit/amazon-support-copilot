@@ -58,12 +58,13 @@ Branching: HIGH + resolvable → resolution with policy citation. MEDIUM / parti
 ## Scope — v1 (MVP)
 
 **In scope:**
-- Web app (desktop + mobile responsive)
-- NL issue input + manual order context (order ID/description, product, issue date)
+- Web app (desktop + mobile responsive), **Amazon-shell UI**: Your Orders → Order Details (contextual self-serve Return/Cancel for in-window orders, mock confirmation only) → Customer Service order picker → co-pilot chat
+- Co-pilot chat: preloaded issue chips + NL free text; order context auto-filled from the selected mock order (`orders.json`, relative dates so windows never expire) — simulates the Amazon order API
 - AI classification, confidence indicator on every response
 - Policy-backed resolution with citation, OR escalation brief
-- Human review layer: user confirms "yes this is my issue" / re-describes (prior context retained)
+- Human review layer: user confirms "yes this is my issue" / re-describes (prior context retained); chat sessions retained per order
 - **Eval panel visible in the UI** — collapsible on every response: classification label, confidence, eval dimensions pass/fail
+- No Amazon logo/trademark art — layout and palette are representative only
 
 **Explicitly out of scope for v1:**
 - Real Amazon API / order data

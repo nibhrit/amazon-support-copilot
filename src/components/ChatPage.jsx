@@ -17,7 +17,12 @@ const QUICK_CHIPS = [
   'My delivery is late',
 ]
 
-const EMPTY_SESSION = { messages: [], categoryCounts: {}, priorContext: null, clarifyBase: null }
+// activeIssue is the conversation's running state: the accumulated issue text,
+// its latest classification, and what the co-pilot last did. Every new message
+// is interpreted against it, so replies read as replies — not fresh issues.
+const EMPTY_SESSION = { messages: [], categoryCounts: {}, priorContext: null, activeIssue: null }
+
+const ACK_TEXT = "Glad that's sorted! 🎉 If anything else comes up with this order — or any other — just tell me."
 
 export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, updateSession }) {
   const order = orderId ? getOrder(orderId) : null
@@ -25,7 +30,7 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const bottomRef = useRef(null)
-  const { messages, categoryCounts, priorContext, clarifyBase } = session
+  const { messages, categoryCounts, priorContext, activeIssue } = session
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -62,20 +67,45 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
     if (userText) updateSession((s) => ({ ...s, messages: [...s.messages, { type: 'user', text: userText }] }))
     try {
       const result = await runPipeline(pipelineArgs)
+
+      if (result.mode === 'ack') {
+        updateSession((s) => ({ ...s, messages: [...s.messages, { type: 'bot', text: ACK_TEXT }] }))
+        return
+      }
+
       const id = nextExchangeId++
-      const exchange = { id, input: { orderContext: pipelineArgs.orderContext, issueText: pipelineArgs.issueText }, ...result, judge: null, userVerdict: null }
+      const exchange = {
+        id,
+        input: { orderContext: pipelineArgs.orderContext, issueText: result.effectiveIssueText },
+        ...result,
+        judge: null,
+        userVerdict: null,
+        briefSent: false,
+      }
       updateSession((s) => ({
         ...s,
         messages: [...s.messages, { type: 'ai', exchange }],
-        clarifyBase: result.mode === 'clarify' ? pipelineArgs.issueText : null,
         priorContext: result.mode === 'clarify' ? s.priorContext : null,
         categoryCounts: result.mode === 'clarify' ? s.categoryCounts : {
           ...s.categoryCounts,
           [result.classification.category]: (s.categoryCounts[result.classification.category] || 0) + 1,
         },
+        activeIssue: {
+          issueText: result.effectiveIssueText,
+          classification: result.mode === 'clarify' ? s.activeIssue?.classification || null : result.classification,
+          attemptedResolution: result.mode === 'resolution' ? result.output : s.activeIssue?.attemptedResolution || null,
+          lastMode: result.mode,
+        },
       }))
+
       if (result.mode !== 'clarify') {
-        fireJudge(id, { orderContext: pipelineArgs.orderContext, issueText: pipelineArgs.issueText, classification: result.classification, output: result.output, mode: result.mode })
+        fireJudge(id, {
+          orderContext: pipelineArgs.orderContext,
+          issueText: result.effectiveIssueText,
+          classification: result.classification,
+          output: result.output,
+          mode: result.mode,
+        })
       }
     } catch (e) {
       setError(e.message)
@@ -88,11 +118,14 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
     const clean = text.trim()
     if (!clean || busy) return
     setDraft('')
-    // If the co-pilot just asked a clarifying question, the reply extends the
-    // original description instead of replacing it.
-    const issueText = clarifyBase ? `${clarifyBase}\nAdditional detail: ${clean}` : clean
+    const conversation = activeIssue ? {
+      issueText: activeIssue.issueText,
+      classification: activeIssue.classification,
+      attemptedResolution: activeIssue.attemptedResolution,
+      lastMode: activeIssue.lastMode,
+    } : null
     const loopCategories = new Set(Object.keys(categoryCounts).filter((k) => categoryCounts[k] >= 1))
-    run({ orderContext, issueText, priorContext, loopCategories }, clean)
+    run({ orderContext, issueText: clean, priorContext, loopCategories, conversation }, clean)
   }
 
   function handleReject(exchange) {
@@ -100,6 +133,8 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
     updateSession((s) => ({
       ...s,
       priorContext: { rejectedCategory: exchange.classification.category, previousIssueText: exchange.input.issueText },
+      // The classification was wrong — drop it so the re-description is read fresh.
+      activeIssue: null,
     }))
   }
 
@@ -112,6 +147,18 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
       },
       "This didn't solve my problem.",
     )
+  }
+
+  function handleSendBrief(exchange) {
+    patchExchange(exchange.id, { briefSent: true })
+    const caseId = `SIM-${String(exchange.id).padStart(4, '0')}`
+    updateSession((s) => ({
+      ...s,
+      messages: [...s.messages, {
+        type: 'bot',
+        text: `✅ Brief sent to the ${exchange.output.suggested_owner} (case ${caseId}). A specialist will contact you within 24 hours and will already have your full context — you won't repeat any of this. (simulated handoff)`,
+      }],
+    }))
   }
 
   return (
@@ -138,12 +185,20 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
             )}
           </div>
 
-          {messages.map((m, i) =>
-            m.type === 'user' ? (
-              <div key={i} className="flex justify-end">
-                <div className="bg-[#131921] text-white rounded-lg rounded-tr-none px-3 py-2 text-sm max-w-[85%]">{m.text}</div>
-              </div>
-            ) : (
+          {messages.map((m, i) => {
+            if (m.type === 'user') {
+              return (
+                <div key={i} className="flex justify-end">
+                  <div className="bg-[#131921] text-white rounded-lg rounded-tr-none px-3 py-2 text-sm max-w-[85%]">{m.text}</div>
+                </div>
+              )
+            }
+            if (m.type === 'bot') {
+              return (
+                <div key={i} className="bg-gray-100 rounded-lg rounded-tl-none px-3 py-2 text-sm text-gray-800 max-w-[85%]">{m.text}</div>
+              )
+            }
+            return (
               <ResponseCard
                 key={i}
                 exchange={m.exchange}
@@ -151,9 +206,10 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
                 onConfirm={() => patchExchange(m.exchange.id, { userVerdict: true })}
                 onReject={() => handleReject(m.exchange)}
                 onStillNotResolved={() => handleStillNotResolved(m.exchange)}
+                onSendBrief={() => handleSendBrief(m.exchange)}
               />
-            ),
-          )}
+            )
+          })}
 
           {busy && (
             <div className="bg-gray-100 rounded-lg rounded-tl-none px-3 py-2 text-sm text-gray-500 max-w-[85%] animate-pulse">

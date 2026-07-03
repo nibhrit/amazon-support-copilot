@@ -5,7 +5,9 @@
 import { callClaude } from './_lib/claude.js'
 
 const VALID_TASKS = new Set(['classify', 'resolve', 'brief', 'judge'])
-const MAX_ISSUE_CHARS = 2000
+// Issue text can accumulate follow-ups across a conversation, so the cap is
+// higher than a single message (the UI caps one message at 2,000 chars).
+const MAX_ISSUE_CHARS = 6000
 const MAX_FIELD_CHARS = 200
 
 export default async function handler(req, res) {
@@ -36,6 +38,9 @@ export default async function handler(req, res) {
     if (oc[k] && String(oc[k]).length > MAX_FIELD_CHARS) {
       return res.status(400).json({ error: `orderContext.${k} too long (max ${MAX_FIELD_CHARS} chars)` })
     }
+  }
+  if (input.conversation && String(input.conversation.issueText || '').length > MAX_ISSUE_CHARS) {
+    return res.status(400).json({ error: `conversation.issueText too long (max ${MAX_ISSUE_CHARS} chars)` })
   }
 
   try {

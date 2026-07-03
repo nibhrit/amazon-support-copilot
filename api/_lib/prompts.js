@@ -50,10 +50,25 @@ export function classifyPrompt(input) {
   const prior = input.priorContext
     ? `\nPRIOR ATTEMPT CONTEXT (the user already described this once and rejected the classification "${input.priorContext.rejectedCategory}"; their earlier description was: """${input.priorContext.previousIssueText}"""). Take both descriptions together and do NOT repeat the rejected classification unless the new description clearly confirms it.`
     : ''
+  const convo = input.conversation
+    ? `\nCONVERSATION SO FAR (ongoing chat session about this order — the new message below is a REPLY in this conversation, not necessarily a fresh issue):
+- Issue described so far: """${input.conversation.issueText || 'none yet'}"""
+- Current classification: ${input.conversation.classification ? `${input.conversation.classification.category} (${input.conversation.classification.confidence})` : 'none yet'}
+- Co-pilot's last action: ${input.conversation.lastMode === 'resolution' ? 'gave resolution steps' : input.conversation.lastMode === 'brief' ? 'produced an escalation brief' : input.conversation.lastMode === 'clarify' ? 'asked a clarifying question' : 'none'}`
+    : ''
   return {
     system: `${SHARED_RULES}
 
-Task: classify the user's issue into exactly one category.
+Task: read the user's newest message and decide two things.
+
+STEP 1 — intent of the newest message (in the context of the conversation, if any):
+- "new_issue" — describes a problem (first description, or a clearly different problem than the conversation so far)
+- "same_issue_followup" — adds detail, answers a question, reports that suggested steps did not work, or otherwise continues the SAME problem (pronouns like "it"/"that", words like "still", "didn't work")
+- "escalation_request" — asks for a human, agent, escalation, complaint, or to "send it" (e.g. "talk to someone", "connect me to support", "escalate this")
+- "closing" — thanks, confirms the problem is solved, or says goodbye
+If there is no conversation yet, intent can only be "new_issue" (or "escalation_request" if they ask for a human before describing anything).
+
+STEP 2 — classify the ISSUE (for same_issue_followup, classify the conversation's issue INCLUDING the new detail; for escalation_request/closing, keep the conversation's existing category if there is one, else "unclear"):
 
 CATEGORIES:
 ${CATEGORY_LIST}
@@ -62,19 +77,20 @@ Confidence calibration rules (strict):
 - HIGH only when the issue unambiguously matches one category and contains enough detail to act on.
 - NEVER output HIGH for third_party_seller_dispute or account_suspension_payment_issue — these always need human judgment.
 - Unusual keywords, mixed signals, or issues that straddle two categories → MEDIUM at most.
-- If the input is too vague to classify responsibly, use category "unclear" with confidence LOW and ask ONE clarifying question. Do not guess.
+- If intent is new_issue but the input is too vague to classify responsibly, use category "unclear" with confidence LOW and ask ONE clarifying question. Do not guess.
 - If you are uncertain, say so in the reasoning. An honest MEDIUM beats a wrong HIGH.`,
-    messages: [{ role: 'user', content: orderContextBlock(input) + prior }],
+    messages: [{ role: 'user', content: orderContextBlock(input) + convo + prior }],
     maxTokens: 500,
     schema: {
       type: 'object',
       properties: {
+        intent: { type: 'string', enum: ['new_issue', 'same_issue_followup', 'escalation_request', 'closing'] },
         category: { type: 'string', enum: Object.keys(CATEGORIES) },
         confidence: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'] },
-        reasoning: { type: 'string', description: '2-3 sentences: why this category and this confidence, citing the user\'s own words' },
+        reasoning: { type: 'string', description: '2-3 sentences: intent, why this category and this confidence, citing the user\'s own words' },
         clarifying_question: { type: ['string', 'null'], description: 'Only when category is unclear: the ONE question to ask. Otherwise null.' },
       },
-      required: ['category', 'confidence', 'reasoning', 'clarifying_question'],
+      required: ['intent', 'category', 'confidence', 'reasoning', 'clarifying_question'],
     },
   }
 }
@@ -93,7 +109,7 @@ ${POLICY_CONTEXT}
 Rules:
 - Choose the single most relevant policy and cite it by policy_id. The "quote" field must be a VERBATIM substring copied from that policy's policy_text — no paraphrasing (it is checked mechanically).
 - Respect resolution_authority in the policy data: if the matched policy says "ai_partial", you must state what you can handle vs what needs human review. You have no discretion to exceed it.
-- resolution_steps must be concrete actions the user can take inside the Amazon app right now — numbered, specific, no "contact customer care" hand-waving.
+- resolution_steps must be concrete actions the user can take inside the Amazon app right now — numbered, specific, no "contact customer care" hand-waving. Describe app actions generically ("open Your Orders", "choose the return option", "raise a delivery investigation from the order page") — do NOT invent exact button or menu labels.
 - If confidence is MEDIUM, open by acknowledging what you are and are not sure about.
 - Do not invent order details (prices, dates, carriers) the user did not provide.`,
     messages: [{ role: 'user', content: orderContextBlock(input) }],

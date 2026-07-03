@@ -5,7 +5,7 @@ import OrderDetailPage from './components/OrderDetailPage'
 import CustomerServicePage from './components/CustomerServicePage'
 import ChatPage from './components/ChatPage'
 
-const EMPTY_SESSION = { messages: [], categoryCounts: {}, priorContext: null, clarifyBase: null }
+const EMPTY_SESSION = { messages: [], categoryCounts: {}, priorContext: null, activeIssue: null }
 
 export default function App() {
   const [view, setView] = useState({ name: 'orders' })

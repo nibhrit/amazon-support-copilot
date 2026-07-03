@@ -51,6 +51,7 @@ for (const c of cases) {
   console.log(`  → ${cls.category} / ${cls.confidence}${cls.clarifying_question ? ` / Q: ${cls.clarifying_question}` : ''}`)
 
   report(cls.category === c.expect.category, 'category', cls.category === c.expect.category ? '' : `expected ${c.expect.category}, got ${cls.category}`)
+  report(cls.intent === 'new_issue', 'intent is new_issue (no conversation)', `got ${cls.intent}`)
   if (c.expect.maxConfidenceViolation) {
     report(cls.confidence !== c.expect.maxConfidenceViolation, `confidence cap (never ${c.expect.maxConfidenceViolation})`, `got ${cls.confidence}`)
     report(checkCalibrationHardRule(cls) === null, 'hard calibration rule')
@@ -61,6 +62,31 @@ for (const c of cases) {
   }
   console.log()
 }
+
+// Conversational-intent checks: mid-chat messages must be read as replies,
+// not fresh issues (regression guard for the "no memory" bug).
+console.log('--- CONVERSATIONAL INTENTS ---')
+const convoState = {
+  issueText: 'My package shows delivered yesterday at 3pm but I never got it. Nobody in my building received anything either.',
+  classification: { category: 'not_delivered_marked_delivered', confidence: 'HIGH' },
+  attemptedResolution: { issue_summary: 'Package marked delivered but not received', resolution_type: 'partial' },
+  lastMode: 'resolution',
+}
+const convoOrder = { orderId: '403-5566778-9900112', product: 'boAt Airdopes earbuds', issueDate: '2026-07-03', orderFacts: 'Delivered 1 July · ₹1,299 paid via Amazon Pay balance' }
+
+const escMsg = await callClaude('classify', { orderContext: convoOrder, issueText: 'just connect me to a human please', conversation: convoState })
+console.log(`[escalation request] → intent: ${escMsg.intent}, category: ${escMsg.category}`)
+report(escMsg.intent === 'escalation_request', 'escalation request detected', `got ${escMsg.intent}`)
+
+const fupMsg = await callClaude('classify', { orderContext: convoOrder, issueText: 'I checked with the neighbours like you said, still nothing', conversation: convoState })
+console.log(`[follow-up] → intent: ${fupMsg.intent}, category: ${fupMsg.category}`)
+report(fupMsg.intent === 'same_issue_followup', 'follow-up detected', `got ${fupMsg.intent}`)
+report(fupMsg.category === 'not_delivered_marked_delivered', 'follow-up keeps issue category', `got ${fupMsg.category}`)
+
+const closeMsg = await callClaude('classify', { orderContext: convoOrder, issueText: 'ok thanks, that worked, found it with security', conversation: convoState })
+console.log(`[closing] → intent: ${closeMsg.intent}`)
+report(closeMsg.intent === 'closing', 'closing detected', `got ${closeMsg.intent}`)
+console.log()
 
 if (full) {
   console.log('--- FULL PIPELINE: resolution case (clear_return) ---')

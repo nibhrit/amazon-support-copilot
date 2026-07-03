@@ -41,7 +41,8 @@ Amazon Support/
 
 Three prompts, all returning structured JSON:
 
-1. **Classifier** — input: NL issue + order context → `{category, confidence, reasoning}`
+1. **Classifier** — input: NL message + order context + conversation state → `{intent, category, confidence, reasoning, clarifying_question}`
+   - Intent first (conversation-aware): new_issue / same_issue_followup (extends accumulated issue text) / escalation_request (straight to brief, never re-interrogate) / closing (ack bubble, no pipeline run)
    - Categories (11): standard return within window; standard refund (item returned); delivery delay (est. date not passed); item not delivered but marked delivered; wrong item received; damaged item; third-party seller dispute; account suspension / payment issue; item outside return window; subscription / Prime billing issue; unclear (ask one clarifying question)
    - Confidence: HIGH / MEDIUM / LOW. Never HIGH for third-party seller or account-level issues. Unusual keywords → default MEDIUM. Vague input → ask one clarifying question before classifying.
 2. **Resolution** — input: classified issue + policy JSON → `{resolution_steps, policy_cited, next_steps}`

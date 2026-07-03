@@ -39,7 +39,10 @@ export function resolvabilityOf(category) {
   return RESOLVABILITY[category] || 'escalate'
 }
 
-export async function runPipeline({ orderContext, issueText, priorContext, loop, loopCategories }) {
+// conversation (optional): { issueText, classification, attemptedResolution, lastMode }
+// — the running state of this chat, so mid-conversation messages are read as
+// replies (follow-ups, escalation requests, thanks) instead of fresh issues.
+export async function runPipeline({ orderContext, issueText, priorContext, loop, loopCategories, conversation }) {
   // Loop guardrail, direct form: the user told us the resolution didn't work —
   // don't re-classify, go straight to the escalation brief.
   if (loop) {
@@ -50,30 +53,67 @@ export async function runPipeline({ orderContext, issueText, priorContext, loop,
       attemptedResolution: loop.attemptedResolution,
       loopDetected: true,
     })
-    return { mode: 'brief', classification: loop.classification, output, loopDetected: true }
+    return { mode: 'brief', classification: loop.classification, output, loopDetected: true, effectiveIssueText: issueText }
   }
 
-  const classification = await callTask('classify', { orderContext, issueText, priorContext })
+  const classification = await callTask('classify', { orderContext, issueText, priorContext, conversation })
+  const intent = classification.intent || 'new_issue'
+
+  if (conversation) {
+    // "thanks, that solved it" — no pipeline run needed.
+    if (intent === 'closing' && conversation.classification) {
+      return { mode: 'ack', classification, output: null, effectiveIssueText: conversation.issueText }
+    }
+
+    // "escalate this / get me a human" — go straight to the brief with the
+    // full accumulated context. Never re-interrogate the user.
+    if (intent === 'escalation_request' && conversation.classification) {
+      const cls = conversation.classification
+      const merged = conversation.issueText
+        ? `${conversation.issueText}\nFollow-up: ${issueText}`
+        : issueText
+      const output = await callTask('brief', {
+        orderContext,
+        issueText: merged,
+        classification: cls,
+        attemptedResolution: conversation.attemptedResolution,
+        loopDetected: Boolean(conversation.attemptedResolution),
+      })
+      return { mode: 'brief', classification: cls, output, loopDetected: Boolean(conversation.attemptedResolution), effectiveIssueText: merged }
+    }
+
+    // Follow-up detail extends the issue rather than replacing it.
+    if (intent === 'same_issue_followup' && conversation.issueText) {
+      issueText = `${conversation.issueText}\nFollow-up: ${issueText}`
+    }
+  }
+
   const resolvability = resolvabilityOf(classification.category)
 
   if (resolvability === 'clarify') {
-    return { mode: 'clarify', classification, output: null }
+    return { mode: 'clarify', classification, output: null, effectiveIssueText: issueText }
   }
 
   // Loop guardrail, typed form: the same issue type is coming around again —
   // skip the resolution attempt and escalate with full context.
   if (loopCategories && loopCategories.has(classification.category)) {
-    const output = await callTask('brief', { orderContext, issueText, classification, loopDetected: true })
-    return { mode: 'brief', classification, output, loopDetected: true }
+    const output = await callTask('brief', {
+      orderContext,
+      issueText,
+      classification,
+      attemptedResolution: conversation?.attemptedResolution,
+      loopDetected: true,
+    })
+    return { mode: 'brief', classification, output, loopDetected: true, effectiveIssueText: issueText }
   }
 
   if (classification.confidence === 'LOW' || resolvability === 'escalate') {
     const output = await callTask('brief', { orderContext, issueText, classification })
-    return { mode: 'brief', classification, output }
+    return { mode: 'brief', classification, output, effectiveIssueText: issueText }
   }
 
   const output = await callTask('resolve', { orderContext, issueText, classification })
-  return { mode: 'resolution', classification, output }
+  return { mode: 'resolution', classification, output, effectiveIssueText: issueText }
 }
 
 // Second, non-blocking call: the LLM judge for the eval panel.

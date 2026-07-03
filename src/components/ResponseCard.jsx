@@ -51,8 +51,8 @@ function briefToText(b) {
   ].join('\n')
 }
 
-export default function ResponseCard({ exchange, onConfirm, onReject, onStillNotResolved, busy }) {
-  const { mode, classification, output, judge, userVerdict, loopDetected } = exchange
+export default function ResponseCard({ exchange, onConfirm, onReject, onStillNotResolved, onSendBrief, busy }) {
+  const { mode, classification, output, judge, userVerdict, loopDetected, briefSent } = exchange
 
   if (mode === 'clarify') {
     return (
@@ -98,6 +98,9 @@ export default function ResponseCard({ exchange, onConfirm, onReject, onStillNot
             <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
               {output.resolution_steps.map((s, i) => <li key={i}>{s.replace(/^\d+\.\s*/, '')}</li>)}
             </ol>
+            <p className="text-[11px] text-gray-400 mt-1">
+              Steps refer to the real Amazon app — they're not clickable in this prototype. If they don't work for you, escalate below.
+            </p>
           </div>
           <PolicyCitation cited={output.policy_cited} />
           {output.needs_human_review?.length > 0 && (
@@ -155,9 +158,17 @@ export default function ResponseCard({ exchange, onConfirm, onReject, onStillNot
               output.urgency === 'Standard' ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-red-100 text-red-800 border-red-200'}`}>
               {output.urgency}
             </span>
+            {briefSent ? (
+              <span className="text-xs font-medium text-green-700">✓ Sent to {output.suggested_owner}</span>
+            ) : (
+              <button onClick={onSendBrief} disabled={busy}
+                className="text-xs bg-amber-400 hover:bg-amber-500 rounded-lg px-3 py-1.5 font-semibold disabled:opacity-50">
+                Send to support agent
+              </button>
+            )}
             <button onClick={() => navigator.clipboard.writeText(briefToText(output))}
               className="text-xs border border-gray-300 hover:border-gray-500 text-gray-700 rounded-lg px-3 py-1.5 font-medium">
-              Copy brief for agent
+              Copy brief
             </button>
           </div>
         </div>

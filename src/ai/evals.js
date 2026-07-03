@@ -63,6 +63,29 @@ export function checkResolution(output) {
     notes.push('Partial resolution must state what needs human review.')
   }
 
+  // Brevity limits (added after user testing: frustrated users don't read
+  // essays). Slightly looser than the prompt's targets to allow tolerance.
+  const steps = output.resolution_steps || []
+  if (steps.length > 4) {
+    pass = false
+    notes.push(`Too many steps (${steps.length} > 4) — frustrated users won't read them.`)
+  }
+  if (steps.some((s) => s.length > 120)) {
+    pass = false
+    notes.push('A step exceeds 120 chars — not scannable.')
+  }
+  if (String(output.issue_summary || '').length > 180) {
+    pass = false
+    notes.push('Summary exceeds 180 chars.')
+  }
+  if ((output.next_steps || []).length > 3) {
+    pass = false
+    notes.push(`Too many next-steps (${output.next_steps.length} > 3).`)
+  }
+  if (pass) {
+    notes.push('Brevity limits respected (≤4 steps, scannable lines).')
+  }
+
   return { pass, notes, citationGrounded }
 }
 

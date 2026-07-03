@@ -107,13 +107,20 @@ POLICY DATA (the ONLY source you may cite):
 ${POLICY_CONTEXT}
 
 Rules:
-- Choose the single most relevant policy and cite it by policy_id. The "quote" field must be a VERBATIM substring copied from that policy's policy_text — no paraphrasing (it is checked mechanically).
+- Choose the single most relevant policy and cite it by policy_id. The "quote" field must be a VERBATIM substring copied from that policy's policy_text — no paraphrasing (it is checked mechanically). Keep the quote to the shortest relevant phrase.
 - Respect resolution_authority in the policy data: if the matched policy says "ai_partial", you must state what you can handle vs what needs human review. You have no discretion to exceed it.
 - resolution_steps must be concrete actions the user can take inside the Amazon app right now — numbered, specific, no "contact customer care" hand-waving. Describe app actions generically ("open Your Orders", "choose the return option", "raise a delivery investigation from the order page") — do NOT invent exact button or menu labels.
-- If confidence is MEDIUM, open by acknowledging what you are and are not sure about.
-- Do not invent order details (prices, dates, carriers) the user did not provide.`,
+- If confidence is MEDIUM, say in ONE short clause what you're unsure about.
+- Do not invent order details (prices, dates, carriers) the user did not provide.
+
+BREVITY — the user is frustrated and on a phone. These limits are enforced mechanically:
+- issue_summary: ONE sentence, max 20 words.
+- resolution_steps: MAX 4 steps. Each step is one short action, max 12 words. Merge trivial steps.
+- next_steps: MAX 3, each one short line.
+- needs_human_review: each item one short line.
+- Never repeat the product name, order number, or dates the user already sees on screen. No filler phrases ("please note", "kindly", "as per policy").`,
     messages: [{ role: 'user', content: orderContextBlock(input) }],
-    maxTokens: 1200,
+    maxTokens: 700,
     schema: {
       type: 'object',
       properties: {
@@ -159,9 +166,10 @@ Rules:
 - user_reported must be a faithful summary of what the user actually said — no additions, no assumptions.
 - Do not invent order numbers, amounts, or dates not present in the input. If the user did not provide something an agent will need, list it in missing_info instead of guessing.
 - suggested_owner mapping: returns/refund/delivery/damaged issues → "Returns team"; third-party seller issues → "Seller disputes"; account, payment, or billing issues → "Account team".
-- urgency: "Time-sensitive" when a window/deadline is at risk; "High-value order" when the user indicates a high order value; otherwise "Standard".`,
+- urgency: "Time-sensitive" when a window/deadline is at risk; "High-value order" when the user indicates a high order value; otherwise "Standard".
+- BREVITY: this brief is scanned by a busy agent. Every field: 1-2 short sentences max. missing_info: max 4 items, short phrases not sentences. Complete beats long — include every fact, waste no words.`,
     messages: [{ role: 'user', content: orderContextBlock(input) + attempted + loop }],
-    maxTokens: 1200,
+    maxTokens: 800,
     schema: {
       type: 'object',
       properties: {

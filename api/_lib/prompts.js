@@ -77,7 +77,10 @@ Confidence calibration rules (strict):
 - HIGH only when the issue unambiguously matches one category and contains enough detail to act on.
 - NEVER output HIGH for third_party_seller_dispute or account_suspension_payment_issue — these always need human judgment.
 - Unusual keywords, mixed signals, or issues that straddle two categories → MEDIUM at most.
+- If the order is from a third-party seller, or the user mentions a seller, confidence is MEDIUM at most — whichever category you choose.
 - If intent is new_issue but the input is too vague to classify responsibly, use category "unclear" with confidence LOW and ask ONE clarifying question. Do not guess.
+- If the user asks for a person but hasn't said what is wrong, use category "unclear" and ask ONE question about what went wrong (and which order, if none is selected). Say you will pass it to a person.
+- If the message raises two or more different problems, classify the first one that can be acted on (MEDIUM at most) and describe the other in other_issue. Do not use "unclear" just because there are several problems.
 - If you are uncertain, say so in the reasoning. An honest MEDIUM beats a wrong HIGH.`,
     messages: [{ role: 'user', content: orderContextBlock(input) + convo + prior }],
     maxTokens: 500,
@@ -89,8 +92,9 @@ Confidence calibration rules (strict):
         confidence: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'] },
         reasoning: { type: 'string', description: '2-3 sentences: intent, why this category and this confidence, citing the user\'s own words' },
         clarifying_question: { type: ['string', 'null'], description: 'Only when category is unclear: the ONE question to ask. Otherwise null.' },
+        other_issue: { type: ['string', 'null'], description: 'If the message raises a second, different problem: a short description of it. Otherwise null.' },
       },
-      required: ['intent', 'category', 'confidence', 'reasoning', 'clarifying_question'],
+      required: ['intent', 'category', 'confidence', 'reasoning', 'clarifying_question', 'other_issue'],
     },
   }
 }
@@ -108,7 +112,9 @@ ${POLICY_CONTEXT}
 
 Rules:
 - Choose the single most relevant policy and cite it by policy_id. The "quote" field must be a VERBATIM substring copied from that policy's policy_text — no paraphrasing (it is checked mechanically). Keep the quote to the shortest relevant phrase.
-- Respect resolution_authority in the policy data: if the matched policy says "ai_partial", you must state what you can handle vs what needs human review. You have no discretion to exceed it.
+- Respect resolution_authority in the policy data: if the matched policy says "ai_partial", you must state what you can handle vs what needs human review. You have no discretion to exceed it. If the most relevant policy is "human_only", still cite it: the system will hand the case to a person.
+- Only state a timeline or turnaround time if the cited policy gives one for this exact situation. Never apply a returns refund timeline to an order that was never picked up or delivered unless a policy says it applies.
+- Never compute day counts (e.g. "8 business days overdue"). State the published window and whether it has passed.
 - resolution_steps must be concrete actions the user can take inside the Amazon app right now — numbered, specific, no "contact customer care" hand-waving. Describe app actions generically ("open Your Orders", "choose the return option", "raise a delivery investigation from the order page") — do NOT invent exact button or menu labels.
 - If confidence is MEDIUM, say in ONE short clause what you're unsure about.
 - Do not invent order details (prices, dates, carriers) the user did not provide.
@@ -165,6 +171,7 @@ ${POLICY_CONTEXT}
 Rules:
 - user_reported must be a faithful summary of what the user actually said — no additions, no assumptions.
 - Do not invent order numbers, amounts, or dates not present in the input. If the user did not provide something an agent will need, list it in missing_info instead of guessing.
+- Do not invent timelines or compute day counts; quote dates as given.
 - suggested_owner mapping: returns/refund/delivery/damaged issues → "Returns team"; third-party seller issues → "Seller disputes"; account, payment, or billing issues → "Account team".
 - urgency: "Time-sensitive" when a window/deadline is at risk; "High-value order" when the user indicates a high order value; otherwise "Standard".
 - BREVITY: this brief is scanned by a busy agent. Every field: 1-2 short sentences max. missing_info: max 4 items, short phrases not sentences. Complete beats long — include every fact, waste no words.`,
@@ -192,10 +199,12 @@ export function judgePrompt(input) {
   return {
     system: `You are a strict QA evaluator for an AI support co-pilot. You judge ONLY the two dimensions below; other dimensions are checked by code. Be harsh — a borderline case fails.
 
-Dimension 1 — confidence_calibration: was the stated confidence appropriate for the input? HIGH requires an unambiguous, actionable issue. Vague or mixed-signal input at HIGH confidence = fail. A cautious MEDIUM on a clear-cut case is a pass (honesty is not penalised).
+Write each note FIRST, then decide pass/fail. The pass value must agree with your note.
 
-Dimension 2 — hallucination_free: does the output invent USER-SPECIFIC facts — order details, amounts, dates, payment methods, or claims about what the user said — that are not in the user's input or order context? Does it state policy terms that are NOT in the policy data below? Those = fail.
-NOT hallucination (do not penalise): restating policy terms that appear in the policy data below; citing policy IDs from that data; generic app navigation instructions (menus, button names, where to tap).
+Dimension 1 — confidence_calibration: judge ONLY the classification's confidence label (HIGH/MEDIUM/LOW) against how clear the user's message is. Do not judge the wording of the resolution or brief here. HIGH requires an unambiguous, actionable issue. Vague or mixed-signal input at HIGH confidence = fail. A cautious MEDIUM on a clear-cut case is a pass (honesty is not penalised).
+
+Dimension 2 — hallucination_free: does the output invent USER-SPECIFIC facts — order details, amounts, dates, payment methods, or claims about what the user said — that are not in the user's input or order context? Does it state policy terms that are NOT in the policy data below? Does it compute numbers or dates incorrectly from the context? Does it promise a timeline or outcome that the cited policy does not give for this situation? Those = fail.
+NOT hallucination (do not penalise): restating policy terms that appear in the policy data below; citing a policy ID that exists in that data, even if you would have chosen a different one; generic app navigation instructions (menus, button names, where to tap); inferences directly supported by the order context (e.g. "sold by X" means X is the seller).
 
 POLICY DATA (ground truth for policy claims):
 ${POLICY_CONTEXT}`,
@@ -212,15 +221,17 @@ ${JSON.stringify(input.output, null, 1)}`,
     maxTokens: 600,
     // Deliberately flat schema: the judge runs on Haiku, and small models
     // reliably fill flat tool schemas but mangle nested objects.
+    // Notes come before verdicts: a verdict written before its reasoning
+    // contradicted that reasoning in 3 of 4 calibration fails (baseline run).
     schema: {
       type: 'object',
       properties: {
-        calibration_pass: { type: 'boolean' },
-        calibration_note: { type: 'string', description: 'One sentence verdict on confidence calibration' },
-        hallucination_pass: { type: 'boolean', description: 'true = output is hallucination-free' },
-        hallucination_note: { type: 'string', description: 'One sentence verdict on hallucination' },
+        calibration_note: { type: 'string', description: 'One sentence reasoning about the confidence label only' },
+        calibration_pass: { type: 'boolean', description: 'Must agree with calibration_note' },
+        hallucination_note: { type: 'string', description: 'One sentence reasoning about invented or misapplied facts' },
+        hallucination_pass: { type: 'boolean', description: 'true = output is hallucination-free. Must agree with hallucination_note' },
       },
-      required: ['calibration_pass', 'calibration_note', 'hallucination_pass', 'hallucination_note'],
+      required: ['calibration_note', 'calibration_pass', 'hallucination_note', 'hallucination_pass'],
     },
   }
 }

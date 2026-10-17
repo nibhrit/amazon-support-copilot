@@ -74,7 +74,7 @@ function briefToText(b) {
 }
 
 export default function ResponseCard({ exchange, onConfirm, onReject, onStillNotResolved, onSendBrief, busy }) {
-  const { mode, classification, output, judge, userVerdict, loopDetected, briefSent } = exchange
+  const { mode, classification, output, judge, userVerdict, loopDetected, briefSent, safetyNote } = exchange
 
   if (mode === 'clarify') {
     return (
@@ -150,6 +150,11 @@ export default function ResponseCard({ exchange, onConfirm, onReject, onStillNot
           <p className="text-sm bg-gray-100 rounded-lg p-2 text-gray-700">
             This needs a human. I've prepared your full case — you won't repeat yourself.
           </p>
+          {safetyNote && (
+            <p className="text-sm bg-red-50 border border-red-200 rounded-lg p-2 text-red-800 font-medium">
+              🔒 {safetyNote}
+            </p>
+          )}
           <Collapsible label="View what the agent will receive">
             <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 text-sm">
               {[
@@ -197,6 +202,11 @@ export default function ResponseCard({ exchange, onConfirm, onReject, onStillNot
         </div>
       )}
 
+      {classification.other_issue && (
+        <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-2 mt-3">
+          You also mentioned: {classification.other_issue}. Tell me about it once this one is sorted.
+        </p>
+      )}
       <ConfirmBar verdict={userVerdict} onConfirm={onConfirm} onReject={onReject} />
       <EvalPanel classification={classification} rows={evalRows} />
     </div>

@@ -40,7 +40,7 @@
       "policy_id": "DEL-002",
       "category": "delivery_delay_past_estimate",
       "title": "Order late beyond the estimated date",
-      "policy_text": "If the estimated delivery date has passed and the item has not arrived, the customer may wait 48 hours (carrier scans can lag) or request a refund/replacement immediately if the tracking shows no movement for 72+ hours. Prime members whose guaranteed delivery date was missed may be eligible for a one-month Prime extension as goodwill.",
+      "policy_text": "If the estimated delivery date has passed and the item has not arrived, the customer may wait 48 hours (carrier scans can lag) or request a refund/replacement immediately if the tracking shows no movement for 72+ hours. Prime members whose guaranteed delivery date was missed may be eligible for a one-month Prime extension as goodwill. If a refund is requested because the order never arrived, it is initiated once the request is approved (no pickup is needed) and then follows the payment-method timelines in REF-001.",
       "resolution_authority": "ai_partial"
     },
     {

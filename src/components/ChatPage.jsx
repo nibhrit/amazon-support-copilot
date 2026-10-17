@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { getOrder, orderToContext } from '../lib/orderLogic'
-import { runPipeline, runJudge } from '../ai/pipeline'
+import { runPipeline, runJudge, conversationFrom, loopCategoriesFrom, nextSessionState } from '../ai/pipeline'
 import ResponseCard from './ResponseCard'
 
 let nextExchangeId = 1
@@ -85,17 +85,7 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
       updateSession((s) => ({
         ...s,
         messages: [...s.messages, { type: 'ai', exchange }],
-        priorContext: result.mode === 'clarify' ? s.priorContext : null,
-        categoryCounts: result.mode === 'clarify' ? s.categoryCounts : {
-          ...s.categoryCounts,
-          [result.classification.category]: (s.categoryCounts[result.classification.category] || 0) + 1,
-        },
-        activeIssue: {
-          issueText: result.effectiveIssueText,
-          classification: result.mode === 'clarify' ? s.activeIssue?.classification || null : result.classification,
-          attemptedResolution: result.mode === 'resolution' ? result.output : s.activeIssue?.attemptedResolution || null,
-          lastMode: result.mode,
-        },
+        ...nextSessionState(s, result),
       }))
 
       if (result.mode !== 'clarify') {
@@ -118,14 +108,13 @@ export default function ChatPage({ orderId, nav, session = EMPTY_SESSION, update
     const clean = text.trim()
     if (!clean || busy) return
     setDraft('')
-    const conversation = activeIssue ? {
-      issueText: activeIssue.issueText,
-      classification: activeIssue.classification,
-      attemptedResolution: activeIssue.attemptedResolution,
-      lastMode: activeIssue.lastMode,
-    } : null
-    const loopCategories = new Set(Object.keys(categoryCounts).filter((k) => categoryCounts[k] >= 1))
-    run({ orderContext, issueText: clean, priorContext, loopCategories, conversation }, clean)
+    run({
+      orderContext,
+      issueText: clean,
+      priorContext,
+      loopCategories: loopCategoriesFrom(categoryCounts),
+      conversation: conversationFrom(activeIssue),
+    }, clean)
   }
 
   function handleReject(exchange) {

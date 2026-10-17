@@ -30,22 +30,27 @@ The prototype mimics Amazon's actual UI (representative, no trademark art) so th
 ## How the AI works
 
 ```
-Order context auto-filled from the selected order + issue in plain language
+Customer message + order details (auto-attached from the selected order)
         │
         ▼
-CLASSIFY  → 1 of 11 issue categories + HIGH/MEDIUM/LOW confidence
-        │     · never HIGH for seller disputes or account issues (hard rule)
-        │     · vague input → asks ONE clarifying question, doesn't guess
-        ▼
-BRANCH    → HIGH + resolvable      → resolution with verbatim policy citation
-            MEDIUM / partial       → partial resolution + what needs human review
-            LOW / non-resolvable   → escalation brief (owner + urgency + full context)
+UNDERSTAND → what the message is doing (new issue, follow-up, asking for a person, thanks)
+             + 1 of 11 problem types + HIGH/MEDIUM/LOW confidence
+             · confidence capped in code: never HIGH for seller, account or billing
+               issues, or on any third-party-seller order
+             · too vague → ONE clarifying question, never a guess
         │
         ▼
-LOOP GUARDRAIL → same issue type twice? Skip the flow, escalate immediately.
-                 The product notices it's looping and changes strategy —
-                 the exact opposite of the bot it replaces.
+DECIDE     → must a person decide?  → escalation brief (owner + urgency + full context)
+               (asked for a person · human-only policy or issue type · LOW confidence ·
+                same problem again · "this didn't solve it")
+             otherwise              → steps backed by a word-for-word policy quote
+        │
+        ▼
+SAFETY     → account and payment handoffs always show
+             "Amazon never asks for your OTP or password. Don't share it."
 ```
+
+The rules on who decides are enforced in code, not left to the prompt: the product notices when it is looping, or when a policy says only a person may decide, and changes course.
 
 ## The eval panel — showing the thinking
 
@@ -60,6 +65,18 @@ Every response carries a collapsible eval panel scoring five dimensions, each ta
 | Hallucination | Code, then LLM judge | Fake citations caught mechanically; invented user facts caught by the judge |
 
 The principle: **use code where code is trustworthy, a judge model only where judgment is needed.**
+
+## How it was tested
+
+47 test cases: all 11 problem types, plus Hinglish, text-speak typos, two problems in one message, prompt-injection attempts and an "I want to talk to someone" conversation. 17 are **held out**: never used while fixing, run once at the end.
+
+| Round | Result |
+|---|---|
+| First full test (21 practice cases) | 10 / 21 passed |
+| After 7 fixes (the 11 failures re-run) | 9 / 11 now pass |
+| **Held-out test (17 untouched cases)** | **15 / 17 passed** |
+
+A small sample: 15 / 17 means the true pass rate is probably above 64% (95% confidence). The fixes came straight from the failures: a human-only policy that got self-serve steps, a request for a person that was forgotten, a missing security warning, an AI judge that contradicted its own reasoning. The whole test programme ran on about $1.50 of API credit, with every run priced in advance and capped in code.
 
 ## Stack
 
@@ -76,9 +93,14 @@ cp .env.example .env   # add your Anthropic API key
 npm run dev            # serves the app AND the api function via a dev bridge
 ```
 
-Eval harness (runs the real prompts against 8 test cases):
+Requires Node 22 (`nvm use` reads `.nvmrc`).
+
+Eval harness (runs the app's real routing against `evals/cases_v2.json`):
 
 ```bash
-node evals/run_evals.mjs        # classification checks
-node evals/run_evals.mjs --full # + resolution, brief, and LLM-judge checks
+node evals/run_evals_v2.mjs --mock                     # free: stand-in AI, checks the routing logic
+node evals/run_evals_v2.mjs --estimate --split all     # free: exact token count → projected cost
+node evals/run_evals_v2.mjs --split dev --budget 0.75  # real run; stops before the dollar cap
 ```
+
+The original 8-case harness (`evals/run_evals.mjs`) is kept for reference.

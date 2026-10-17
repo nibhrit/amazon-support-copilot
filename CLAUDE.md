@@ -41,7 +41,8 @@ Amazon Support/
 
 Three prompts, all returning structured JSON:
 
-1. **Classifier** — input: NL message + order context + conversation state → `{intent, category, confidence, reasoning, clarifying_question}`
+1. **Classifier** — input: NL message + order context + conversation state → `{intent, category, confidence, reasoning, clarifying_question, other_issue}`
+   - `other_issue`: a second, different problem in the same message (shown on screen; the first is handled)
    - Intent first (conversation-aware): new_issue / same_issue_followup (extends accumulated issue text) / escalation_request (straight to brief, never re-interrogate) / closing (ack bubble, no pipeline run)
    - Categories (11): standard return within window; standard refund (item returned); delivery delay (est. date not passed); item not delivered but marked delivered; wrong item received; damaged item; third-party seller dispute; account suspension / payment issue; item outside return window; subscription / Prime billing issue; unclear (ask one clarifying question)
    - Confidence: HIGH / MEDIUM / LOW. Never HIGH for third-party seller or account-level issues. Unusual keywords → default MEDIUM. Vague input → ask one clarifying question before classifying.
@@ -53,6 +54,13 @@ Three prompts, all returning structured JSON:
 Branching: HIGH + resolvable → resolution with policy citation. MEDIUM / partially resolvable → partial resolution + flag what needs human review. LOW / non-resolvable → acknowledge + escalation brief.
 
 **Loop guardrail:** same issue type submitted twice → skip re-classification, go straight to escalation brief (simple useState counter).
+
+**Rules enforced in code (`src/ai/pipeline.js`), not prompts:**
+- Confidence capped at MEDIUM for seller/account categories AND on any third-party-seller order (keyed on order facts, so a different label can't dodge it).
+- A resolution citing a `human_only` policy becomes a brief (policy authority beats category).
+- `humanRequested` is sticky: once the user asks for a person, the conversation ends in a brief as soon as the problem is clear (one clarifying question allowed).
+- Account/payment briefs carry a fixed `safetyNote` ("Amazon never asks for your OTP or password. Don't share it.").
+- Chat session state transitions are shared pure functions (`conversationFrom`, `loopCategoriesFrom`, `nextSessionState`) used by both ChatPage and the eval harness.
 
 ---
 
@@ -86,7 +94,11 @@ Rubric (per PRD Section 7), scored per response:
 
 **Primary metric:** first-contact resolution rate (real Amazon OKR). Portfolio measurement: 5 real users, record 3 breaks → fix 2 → document the delta.
 
-Eval panel scoring is **hybrid**: deterministic code checks where reliable (policy citation exists in policies.json, brief has all required fields, disclaimer present), plus one lightweight LLM-as-judge call for subjective dimensions (confidence calibration, hallucination). Rationale: use code where code is trustworthy, a judge model only where judgment is needed.
+Eval panel scoring is **hybrid**: deterministic code checks where reliable (policy citation exists in policies.json, brief has all required fields, disclaimer present), plus one lightweight LLM-as-judge call for subjective dimensions (confidence calibration, hallucination). Rationale: use code where code is trustworthy, a judge model only where judgment is needed. The judge writes its reasoning before its verdict (schema order matters).
+
+**Offline eval harness (v2):** `evals/run_evals_v2.mjs` over `evals/cases_v2.json` (39 cases + 8 legacy = 47; 17 held-out). Modes: `--mock` (free, stand-in AI), `--estimate` (free, count_tokens), live with `--budget` (hard dollar cap). Results go to gitignored `evals/results/`. Held-out cases are scored once per release and never used for tuning. Requires Node 22 (`.nvmrc`).
+
+**API budget is small (a few dollars, shared with the live demo):** always run `--mock` and `--estimate` first, and get the owner's OK on the projected cost before any live run.
 
 ---
 
